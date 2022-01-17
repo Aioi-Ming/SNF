@@ -1,6 +1,8 @@
 # SNF
 An implementation of Stochastic Normalizing Flows
 
+(Used for self-study)
+
 
 
 - Original Paper and Repo:
