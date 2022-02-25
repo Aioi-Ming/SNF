@@ -66,9 +66,6 @@ class Configuration(object):
 #        self.acceptance_rate.append(pacc)
         
 
-        
-
-
         #methopolis
         E0 = self.bg.target_energy(x_batch) + Jxz_batch
         z_batch_new = z_batch + self.stepsize[-1] * torch.randn(z_batch.shape[0], z_batch.shape[1])
