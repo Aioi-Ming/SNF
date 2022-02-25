@@ -70,7 +70,7 @@ def ImageSampler(img_density, mean, scale, n_sample=10000):
     xy = (xy - mean) / scale
     return xy
 
-class ImageModel(Object):
+class ImageModel(object):
     def __init__(self, pixel_energy, mean=[350, 350], scale=[350, 350], outside_penalty=1.0):
         """ Evaluates image energy at continuous coordinates
         Parameters
