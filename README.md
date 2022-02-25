@@ -15,6 +15,16 @@ An implementation of Stochastic Normalizing Flows
 
 ### Implementation of first two example
 
-- Double Well
-- Image 
+##### Double well
 
+- BG and SNF
+
+- Explore Configuration Space
+
+##### Image 
+
+- BG and SNF
+
+##### Particle
+
+- BG (not finished)
