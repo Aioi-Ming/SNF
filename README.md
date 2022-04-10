@@ -21,6 +21,12 @@ An implementation of Stochastic Normalizing Flows
 
 - Explore Configuration Space
 
+##### Mueller
+
+##### MultiWell
+
+##### Square
+
 ##### Image 
 
 - BG and SNF
