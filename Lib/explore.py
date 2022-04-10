@@ -3,9 +3,11 @@ import torch
 from torch import distributions
 from torch import nn
 from torch.utils import data
+import matplotlib.pyplot as plt
+import matplotlib
 
 class Configuration(object):
-  def __init__(self, bg, X0, capacity, batch_size=1024):
+  def __init__(self, bg, X0, capacity, batch_size=1024,max_stepsize=2.0,min_stepsize=0.01):
     self.bg=bg
     self.lr=1e-4
     self.batch_size=batch_size
@@ -18,6 +20,9 @@ class Configuration(object):
     self.loss_train = []
     self.acceptance_rate = []
     self.stepsize = []
+    self.max_stepsize=max_stepsize
+    self.min_stepsize=min_stepsize
+   
 
   def configure(self, epochs, stepsize=None, iter=300, lr=1e-4, start_step=0.5):
     if stepsize is None:  # initialize stepsize when called for the first time
@@ -32,7 +37,7 @@ class Configuration(object):
         ax=plt.gca()
         ax.hist2d(self.X[:,0],self.X[:,1],bins=100,norm=matplotlib.colors.LogNorm())
         plt.show()
-        plot_energy(self.X[:,0]) #plot energy
+#        plot_energy(self.X[:,0]) #plot energy
       
         #sample batch
         I_select=np.random.choice(self.I,size=self.batch_size, replace=True)
@@ -45,7 +50,7 @@ class Configuration(object):
 #        loss2=self.bg.train_KL(iter=iter,lr=lr)     
 #        print('iter %s:' % e, 'loss = %.3f' % loss2[-1]) 
         
-        loss=self.bg.train_mix(x_batch,iter=iter,lr=lr)
+        loss=self.bg.train_mix(x_batch,iter=iter,lr=lr,w_kl=0.3, w_ml=0.7)
         print('iter %s:' % e, 'loss = %.3f' % loss[-1])
         
         z_batch, Jxz_batch = self.bg.backward_flow(x_batch)
@@ -88,9 +93,9 @@ class Configuration(object):
           if len(self.acceptance_rate) > 2:  # update stepsize
               mean_acceptance_rate = np.mean(self.acceptance_rate[-2:])
               if mean_acceptance_rate < 0.3:
-                  self.stepsize.append(max(self.stepsize[-1] - 0.1, 0.001))
+                  self.stepsize.append(max(self.stepsize[-1] - 0.1, self.min_stepsize))
               elif mean_acceptance_rate > 0.7:
-                  self.stepsize.append(min(self.stepsize[-1] + 0.1, 1.0))
+                  self.stepsize.append(min(self.stepsize[-1] + 0.1, self.max_stepsize))
               else:
                   self.stepsize.append(self.stepsize[-1])  # just copy old stepsize
           else:

@@ -1,5 +1,7 @@
 import numpy as np
+import torch
 import matplotlib.pyplot as plt
+import matplotlib
 
 def plot_dimer_energy_with_data(model, x, axis=None):
     counts, bins = np.histogram(x, bins = 200 )
@@ -27,3 +29,39 @@ def plot_dimer_energy_with_data(model, x, axis=None):
 
 
     return d_scan, E_scan
+
+
+def plot_forward_backward_2d(model, x, num_samples=10000):
+    # Visualize
+    fig, axes = plt.subplots(2, 2, figsize = (12,10))
+
+    # plot data sampled in real space 
+    plt.subplot(221)
+    ax=plt.gca()
+    ax.hist2d(x[:,0],x[:,1],bins=100,norm=matplotlib.colors.LogNorm())
+    plt.title(r'$a) x \sim \mu_X$')
+
+    # sample from x and transform to z 
+    zb=model.backward_flow(torch.from_numpy(x))[0].detach().numpy()
+    plt.subplot(222)
+    ax=plt.gca()
+    ax.hist2d(zb[:,0],zb[:,1],bins=100,norm=matplotlib.colors.LogNorm())
+    plt.title(r'$b) z = f(x)$')
+
+    # sampling from gaussian and transform to x
+    z, x, _ = model.sample(num_samples)
+    #plot gaussian
+    plt.subplot(223)
+    ax=plt.gca()
+    ax.hist2d(z[:,0],z[:,1],bins=100,norm=matplotlib.colors.LogNorm())
+    #plt.scatter(z[:, 0], z[:, 1])
+
+    plt.title(r'$c) z \sim \mu_Z$')
+
+    # plot x transformed from gaussian
+    plt.subplot(224)
+    ax=plt.gca()
+    ax.hist2d(x[:,0],x[:,1],bins=100,norm=matplotlib.colors.LogNorm())
+    plt.title(r'$d) x = g(z)$')
+
+    plt.show()

@@ -31,8 +31,46 @@ class BG_RealNVP(nn.Module):
         self.nett = torch.nn.ModuleList([nett() for _ in range(len(self.masks))])  # translation function (net)
         self.nets = torch.nn.ModuleList([nets() for _ in range(len(self.masks))])  # scaling function (net)
 
+    def MCMC_forward(self, x ):
+        stepsize=self.step_size
+        nsteps=self.nsteps
+        E0 = self.target_energy(x).reshape((x.shape[0],1))
+        Et = E0
+        for i in range(nsteps):
+            # proposal step
+            dx = stepsize * torch.zeros_like(x).normal_()
+            xprop = x + dx
+            Eprop = self.target_energy(xprop).reshape((x.shape[0],1))
+            # acceptance step
+            acc = (torch.rand(x.shape[0],1) < torch.exp(-(Eprop - Et))).float()  # selection variable: 0 or 1.
+            x = (1-acc) * x + acc * xprop
+            Et = (1-acc) * Et + acc * Eprop
+
+        dW = (Et - E0).reshape(x.shape[0],)
+        return x, dW     
+    
+    def MCMC_backward(self, z):
+        stepsize=self.step_size
+        nsteps=self.nsteps
+        E0 = self.prior_energy(z).reshape((z.shape[0],1))
+        Et = E0
+        for i in range(nsteps):
+            # proposal step
+            dz = stepsize * torch.zeros_like(z).normal_()
+            zprop = z + dz
+            Eprop = self.prior_energy(zprop).reshape((z.shape[0],1))
+            # acceptance step
+            acc = (torch.rand(z.shape[0],1) < torch.exp(-(Eprop - Et))).float()  # selection variable: 0 or 1.
+            z = (1-acc) * z + acc * zprop
+            Et = (1-acc) * Et + acc * Eprop
+
+        dW = (Et - E0).reshape(z.shape[0],)
+        return z, dW    
+    
     def target_energy(self, x):
+#        return self.prior_energy(x)
         return self.target_model.energy_torch(x)
+    
 
     def prior_energy(self, z):
         return 0.5 * torch.linalg.norm(z, dim=1) ** 2
@@ -49,12 +87,18 @@ class BG_RealNVP(nn.Module):
 
             x = x1 + (1 - self.masks[i]) * (x * torch.exp(s) + t)
             log_R_zx += torch.sum(s, -1)
+            if self.stochastic==True:
+                x,dw=self.MCMC_forward(x)
+                log_R_zx+=dw
         return x, log_R_zx
 
     def backward_flow(self, x):
         log_R_xz, z = x.new_zeros(x.shape[0]), x
 
         for i in reversed(range(len(self.masks))):
+            if self.stochastic==True:
+                z, dw=self.MCMC_backward(z)
+                log_R_xz+=dw
             z1 = z * self.masks[i]
 
             s = self.nets[i](z1) * (1 - self.masks[i])
@@ -76,13 +120,13 @@ class BG_RealNVP(nn.Module):
 
     def loss_ml(self, batch_x):
         z, log_R_xz = self.backward_flow(batch_x)
-        energy = 0.5 * torch.linalg.norm(z, dim=1) ** 2
+        energy = self.prior_energy(z)
         return torch.mean(energy - log_R_xz)
 
     def loss_kl(self, batch_z):
         x, log_R_zx = self.forward_flow(batch_z)
         energy = self.target_energy(x)
-        e_high = 1e5
+        e_high = 1e10
         for i in range(len(energy)):
             if abs(energy[i]) == float('inf'):
                 print("energy overflow detected")
